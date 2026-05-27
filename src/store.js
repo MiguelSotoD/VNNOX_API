@@ -1,7 +1,6 @@
 const state = {
-  logid: null,
   accessToken: null,
-  rawAuth: null,
+  tokenExpiresAt: null, // Unix timestamp in ms
 };
 
 module.exports = state;

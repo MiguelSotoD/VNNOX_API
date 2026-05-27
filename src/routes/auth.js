@@ -1,31 +1,16 @@
 const express = require('express');
-const axios = require('axios');
-const qs = require('querystring');
+const { refreshToken } = require('../services/auth');
 const state = require('../store');
 const router = express.Router();
 
-// POST /api/auth/token
-router.post('/token', async (req, res) => {
+// GET /api/auth/token
+router.get('/token', async (req, res) => {
   try {
-    const response = await axios.post(
-      `${process.env.VNNOX_BASE_URL}/v1/oauth/token`,
-      qs.stringify({
-        username: process.env.VNNOX_USERNAME,
-        password: process.env.VNNOX_PASSWORD,
-      }),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          username: process.env.VNNOX_USERNAME,
-        },
-      }
-    );
-
-    state.logid = response.data.logid;
-    state.accessToken = response.data.data?.token || null;
-    state.tokenExpire = response.data.data?.expire || null;
-
-    res.json(response.data);
+    await refreshToken();
+    res.json({
+      message: 'Token obtained successfully',
+      expiresAt: new Date(state.tokenExpiresAt).toISOString(),
+    });
   } catch (error) {
     const status = error.response?.status || 500;
     const data = error.response?.data || { message: error.message };
@@ -33,15 +18,13 @@ router.post('/token', async (req, res) => {
   }
 });
 
-// GET /api/auth/logid
-router.get('/logid', (req, res) => {
-  if (!state.logid) {
-    return res.status(404).json({ message: 'No logid stored. Call POST /api/auth/token first.' });
-  }
+// GET /api/auth/status
+router.get('/status', (req, res) => {
   res.json({
-    logid: state.logid,
-    accessToken: state.accessToken,
-    expire: state.tokenExpire,
+    hasToken: !!state.accessToken,
+    tokenPreview: state.accessToken ? state.accessToken.substring(0, 20) + '...' : null,
+    expiresAt: state.tokenExpiresAt ? new Date(state.tokenExpiresAt).toISOString() : null,
+    isExpired: state.tokenExpiresAt ? Date.now() >= state.tokenExpiresAt : true,
   });
 });
 
